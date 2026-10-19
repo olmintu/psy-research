@@ -90,16 +90,10 @@
             <div style="font-weight:bold; margin-bottom:10px;">🛠️ Режим разработчика</div>
             <div style="display:flex; align-items:center;">
                 <button class="dev-btn" onclick="fillRandomData()">🎲 Заполнить случайно</button>
-                <button class="dev-btn" onclick="document.getElementById('dev-import').style.display='block'">📂 Загрузить JSON</button>
             </div>
             <label style="display:block; margin-top:10px; cursor:pointer;">
                 <input type="checkbox" id="dev-send-cloud"> ☁️ Отправлять в облако 
             </label>
-            <div id="dev-import" style="display:none; margin-top:10px;">
-                <textarea id="dev-json-input" placeholder="Вставьте JSON сюда..."></textarea>
-                <button class="dev-btn" style="margin-top:5px; background:#27ae60" onclick="loadDevJSON()">Применить</button>
-                <div id="dev-error" style="color:#e74c3c; font-size:0.9em; margin-top:5px;"></div>
-            </div>
         </div>
         <div style="display: flex; gap: 10px;">
             <div class="form-group" style="flex: 1;">

@@ -231,22 +231,6 @@ state.econ = makeRandomEcon(); state.econPage = ECON_SCREENS.length - 1;
 saveStateToLocal();
 finishSurvey();
 }
-function loadDevJSON() {
-try {
-    let json = document.getElementById('dev-json-input').value;
-    let data = JSON.parse(json);
-    if(data.bratus && data.milman && data.ipl) {
-        state = data;
-        state.meta.mode = "dev"; // Force dev to avoid pollution
-        saveStateToLocal();
-        finishSurvey(true);
-    } else {
-        alert("Некорректный JSON (нет полей bratus/milman/ipl)");
-    }
-} catch(e) {
-    document.getElementById('dev-error').innerText = "Ошибка парсинга: " + e.message;
-}
-}
 // --- ЛОГИКА ---
 function toggleConsent() {
 // Снимаем красную подсветку, как только пользователь дал согласие
@@ -301,7 +285,24 @@ function validateForm() {
 let rawFio = document.getElementById('fio');
 if (rawFio && rawFio.value.toLowerCase().trim() === 'dev') {
     const devBtn = document.getElementById('dev-autofill-btn');
-    if(devBtn) devBtn.style.display = 'block';
+    if (devBtn) devBtn.style.display = 'block';
+
+    // Собираем все поля: если какое-то поле ты выбрал для теста — берем его, иначе ставим заглушку
+    const allIds = ['gender','age','is_kmns','kmns_name','family_status','children','financial_support','is_working','work_type','has_secondary_edu','edu_status','university','speciality','edu_level','edu_basis','course'];
+    allIds.forEach(id => {
+        const el = document.getElementById(id);
+        state.meta[id] = (el && el.value && el.value.trim() !== '') ? el.value : 'DEV';
+    });
+    collectOptionalMeta();
+    state.meta.fio = 'DEV';
+    state.meta.mode = 'dev';
+
+    // Прячем возможные плашки ошибок и сразу запускаем опрос
+    document.getElementById('consent-error').style.display = 'none';
+    document.getElementById('form-error').style.display = 'none';
+    saveStateToLocal();
+    goNext('form');
+    return;
 }
 // 0. ПРОВЕРКА СОГЛАСИЯ (обязательна в любом режиме, включая анонимный)
 if (!document.getElementById('consent_check').checked) {
