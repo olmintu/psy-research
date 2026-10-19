@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Психологическое исследование</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <!-- PDFMake для генерации PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- styles.css -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <link rel="icon" href="icons/favicon.ico" sizes="any">
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link rel="manifest" href="icons/site.webmanifest">
+</head>
+<body>
+        <button id="theme-toggle" onclick="toggleTheme()" style="position: fixed; top: 15px; right: 15px; z-index: 9999; background: var(--surface); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 1.2em; display: flex; align-items: center; justify-content: center; padding: 0;">
+            🌓
+        </button>
+    <div id="soft-ask-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1001;">
+        <div class="import-modal-content" style="text-align: left;">
+            <h3 style="color: var(--primary);">Минуточку внимания 🥺</h3>
+            <p style="font-size: 0.95em; color: var(--text-main); line-height: 1.5; transition: color 0.3s;">
+                Вы выбрали анонимный режим, и <b>мы уважаем ваше решение!</b>
+            </p>
+            <p style="font-size: 0.95em; color: var(--text-main); line-height: 1.5; transition: color 0.3s;">
+                Однако, для научной ценности этого исследования нам <b>очень важно</b> знать хотя бы ваш <b>Пол</b> и <b>Возраст</b>. Это позволит нам понять, как различаются результаты у разных групп людей, не нарушая вашу анонимность.
+            </p>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn-secondary" style="margin-top:0;" onclick="proceedAsCompleteAnon()">Оставить пустым</button>
+                <button class="btn btn-next" style="margin-top:0;" onclick="closeSoftAskAndFill()">Заполнить данные</button>
+            </div>
+        </div>
+    </div>
+<div class="container">
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <!-- АНКЕТА -->
+    <div class="step active" id="step-form">
+        <div class="load-prior-result">
+            <span>Уже проходили тест?</span>
+            <button class="btn btn-discreet" onclick="showUserImportModal()">Загрузить результат</button>
+        </div>
+        <h1>Анкета участника</h1>
+        <div class="instruction">
+            <p style="margin-top: 0; ">Здравствуйте! Приглашаем вас принять участие в психологическом исследовании.</p>
+            <ul style="margin-bottom: 10px; font-size: 0.95em;">
+                <b>Время прохождения</b> ~30–35 минут (опрос состоит из 5 блоков).
+            </ul>
+            <p style="margin-top: 0; ">Вся информация будет использована <b>только в обобщенном виде</b>.</p>
+            
+            
+            <details style="margin-top: 15px; background: var(--input-bg); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border);">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--primary); transition: color 0.3s; user-select: none;">
+                    Подробнее об исследовании
+                </summary>
+                <div style="font-size: 0.9em; color: var(--text-main); margin-top: 10px; line-height: 1.5;">
+                    <p style="margin-top: 0;">Исследование направлено на изучение вашего экономического сознания, ценностей, мотивации и реакции на новые ситуации. Внутри вас ждут пять методик:</p>
+                    <ul style="padding-left: 20px;">
+                        <li><b>Экономическое сознание:</b> как вы относитесь к деньгам, собственности, работе и своему материальному положению.</li>
+                        <li><b>Жизненные смыслы:</b> что для вас по-настоящему важно.</li>
+                        <li><b>Смысложизненные ориентации:</b> насколько осмысленной, целеустремлённой и управляемой вы воспринимаете свою жизнь.</li>
+                        <li><b>Мотивационная структура:</b> ваши стремления в повседневной жизни и на работе/учебе.</li>
+                        <li><b>Инновационный потенциал:</b> как вы справляетесь с изменениями и относитесь к нововведениям.</li>
+                    </ul>
+                    <p style="margin-bottom: 0;">В конце опроса вы получите <b>подробную автоматическую интерпретацию</b> вашего профиля. Пожалуйста, отвечайте искренне, нет верных и неверных ответов. Важны именно ваши индивидуальные ощущения и представления. </p>
+                </div>
+            </details>
+        </div>
+        
+        <div class="anon-switch">
+            <input type="checkbox" id="anon_mode" onchange="toggleAnon(); saveStateToLocal();">
+            <div>
+                <label for="anon_mode" style="margin:0; cursor:pointer;"><b>Пройти опрос анонимно</b></label>
+                <div class="anon-warning" id="anon_warning">
+                    Сведения об участнике помогают понять, для каких групп людей полученные результаты характерны в большей степени. 
+                    Отказ от их указания при анонимном прохождении может уменьшить точность и обобщаемость выводов исследования.
+                    <b>Вы можете пропустить любые поля, но каждый ваш ответ делает исследование точнее!</b>
+                </div>
+            </div>
+        </div>
+        <div class="form-group"><label>Ваше имя (или псевдоним): <span class="req">*</span></label><input type="text" id="fio" placeholder="Иванов Иван" onkeyup="checkDevMode(this.value)"></div>
+        <!-- DEV TOOLS -->
+        <div id="dev-panel">
+            <div style="font-weight:bold; margin-bottom:10px;">🛠️ Режим разработчика</div>
+            <div style="display:flex; align-items:center;">
+                <button class="dev-btn" onclick="fillRandomData()">🎲 Заполнить случайно</button>
+                <button class="dev-btn" onclick="document.getElementById('dev-import').style.display='block'">📂 Загрузить JSON</button>
+            </div>
+            <label style="display:block; margin-top:10px; cursor:pointer;">
+                <input type="checkbox" id="dev-send-cloud"> ☁️ Отправлять в облако 
+            </label>
+            <div id="dev-import" style="display:none; margin-top:10px;">
+                <textarea id="dev-json-input" placeholder="Вставьте JSON сюда..."></textarea>
+                <button class="dev-btn" style="margin-top:5px; background:#27ae60" onclick="loadDevJSON()">Применить</button>
+                <div id="dev-error" style="color:#e74c3c; font-size:0.9em; margin-top:5px;"></div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Пол: <span class="req">*</span></label>
+                <select id="gender" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Возраст: <span class="req">*</span></label>
+                <input type="number" id="age" placeholder="18" onchange="saveStateToLocal()">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Относите ли Вы себя к коренным малочисленным народам? <span class="req">*</span></label>
+            <select id="is_kmns" onchange="toggleKmnsName(); saveStateToLocal();">
+                <option value="">Выбрать...</option><option value="Нет">Нет</option><option value="Да">Да</option></select>
+        </div>
+        <div class="form-group conditional-block" id="kmns_name_block" style="display: none;">
+            <label>Укажите, пожалуйста, какой именно народ Вы представляете (не обязательно):</label>
+            <input type="text" id="kmns_name" placeholder="Например, ханты, манси..." onchange="saveStateToLocal();">
+        </div>
+        <div class="form-group"><label>Семейное положение: <span class="req">*</span></label><select id="family_status" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Холост/Не замужем">Холост / Не замужем</option><option value="Женат/Замужем">Женат / Замужем</option><option value="В разводе">В разводе</option></select></div>
+        <div class="form-group"><label>Есть ли дети? <span class="req">*</span></label><select id="children" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Нет">Нет</option><option value="Да">Да</option></select></div>
+        <div class="form-group">
+            <label>Как Вы сейчас обеспечиваете себя материально? <span class="req">*</span></label>
+            <select id="financial_support" onchange="toggleOther('financial_support'); saveStateToLocal()">
+                <option value="">Выбрать...</option>
+                <option value="Живу полностью на иждивении родителей">Живу полностью на иждивении родителей</option>
+                <option value="Живу в основном на иждивении родителей, но частично обеспечиваю себя сам">Живу в основном на иждивении родителей, но частично обеспечиваю себя сам</option>
+                <option value="Большей частью обеспечиваю себя сам, но родители помогают">Большей частью обеспечиваю себя сам, но родители помогают</option>
+                <option value="Живу самостоятельно без поддержки родителей">Живу самостоятельно без поддержки родителей</option>
+                <option value="Живу самостоятельно, помогаю родителям">Живу самостоятельно, помогаю родителям</option>
+                <option value="Другое">Другое</option>
+            </select>
+            <div class="conditional-block" id="financial_support_other_block" style="display: none; margin-top: 8px;">
+                <input type="text" id="financial_support_other" placeholder="Уточните (не обязательно)" onchange="saveStateToLocal()">
+            </div>
+        </div>
+        <div class="form-group"><label>Работаете ли Вы? <span class="req">*</span></label><select id="is_working" onchange="toggleWorkPlace(); saveStateToLocal()"><option value="">Выбрать...</option><option value="Нет">Нет</option><option value="Да">Да</option></select></div>
+                <div class="form-group conditional-block" id="work_type_block" style="display: none;">
+            <label>Какое описание лучше всего подходит к Вашему месту работы? <span class="req">*</span></label>
+            <select id="work_type" onchange="toggleOther('work_type'); saveStateToLocal()">
+                <option value="">Выбрать...</option>
+                <option value="На госпредприятии">На госпредприятии</option>
+                <option value="На акционерном предприятии открытого типа">На акционерном предприятии открытого типа</option>
+                <option value="На акционерном предприятии закрытого типа">На акционерном предприятии закрытого типа</option>
+                <option value="ООО (ТОО)">ООО (ТОО)</option>
+                <option value="Являюсь (со)владельцем предприятия, фирмы и т.п.">Являюсь (со)владельцем предприятия, фирмы и т.п.</option>
+                <option value="На частном предприятии">На частном предприятии</option>
+                <option value="Занимаюсь своим бизнесом">Занимаюсь своим бизнесом</option>
+                <option value="Работаю на инофирме">Работаю на инофирме</option>
+                <option value="Другое">Другое</option>
+            </select>
+                        <div class="conditional-block" id="work_type_other_block" style="display: none; margin-top: 8px;">
+                <input type="text" id="work_type_other" placeholder="Уточните (не обязательно)" onchange="saveStateToLocal()">
+            </div>
+            <div style="margin-top: 15px;">
+                <label>В какой сфере Вы работаете? (не обязательно)</label>
+                <select id="work_sphere" onchange="toggleOther('work_sphere'); saveStateToLocal()">
+                <option value="">Выбрать...</option>
+                <option value="Образование и наука">Образование и наука</option>
+                <option value="Здравоохранение и социальная сфера">Здравоохранение и социальная сфера</option>
+                <option value="Торговля и услуги">Торговля и услуги</option>
+                <option value="Промышленность и производство">Промышленность и производство</option>
+                <option value="Нефтегазовая отрасль">Нефтегазовая отрасль</option>
+                <option value="Строительство">Строительство</option>
+                <option value="Транспорт и логистика">Транспорт и логистика</option>
+                <option value="Финансы и банки">Финансы и банки</option>
+                <option value="IT и связь">IT и связь</option>
+                <option value="Государственная и муниципальная служба">Государственная и муниципальная служба</option>
+                <option value="Культура, спорт, туризм">Культура, спорт, туризм</option>
+                <option value="Другое">Другое</option>
+                </select>
+                <div class="conditional-block" id="work_sphere_other_block" style="display: none; margin-top: 8px;">
+                    <input type="text" id="work_sphere_other" placeholder="Уточните сферу (не обязательно)" onchange="saveStateToLocal()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group"><label>Среднее спец. образование? <span class="req">*</span></label><select id="has_secondary_edu" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Нет">Нет</option><option value="Да">Да</option></select></div>
+        <div class="form-group"><label>Ваш статус обучения: <span class="req">*</span></label><select id="edu_status" onchange="toggleEduBlock(); saveStateToLocal()"><option value="">Выбрать...</option><option value="Учусь">Студент (учусь сейчас)</option><option value="Закончил">Выпускник (уже закончил)</option><option value="Нет">Не учился в ВУЗе</option></select></div>
+        <div id="edu_block" style="display: none; border-left: 3px solid #3498db; padding-left: 15px;">
+            <div class="form-group"><label>ВУЗ (можно сокращённо): <span class="req">*</span></label><input type="text" id="university" onchange="saveStateToLocal()"></div>
+            <div class="form-group"><label>Специальность: <span class="req">*</span></label><input type="text" id="speciality" onchange="saveStateToLocal()"></div>
+            <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;"><label>Уровень: <span class="req">*</span></label><select id="edu_level" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Бакалавриат">Бакалавриат</option><option value="Магистратура">Магистратура</option><option value="Специалитет">Специалитет</option></select></div>
+            <div class="form-group" style="flex: 1;"><label>Основа: <span class="req">*</span></label><select id="edu_basis" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="Бюджет">Бюджет</option><option value="Платное">Платное</option></select></div>
+            </div>
+            <div class="form-group" id="course_block"><label>Курс: <span class="req">*</span></label><select id="course" onchange="saveStateToLocal()"><option value="">Выбрать...</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+        </div>
+        <!-- СОГЛАСИЕ НА ОБРАБОТКУ ДАННЫХ -->
+        <div class="consent-block" id="consent_block">
+            <input type="checkbox" id="consent_check" onchange="toggleConsent()">
+            <label for="consent_check">
+                Я добровольно соглашаюсь на участие в исследовании и даю согласие на обработку предоставленных мной данных. Данные используются исключительно в научных целях, в обобщённом и обезличенном виде. <span class="consent-req">*</span>
+            </label>
+        </div>
+        <div class="error-msg" id="consent-error" style="margin-top:10px;">Для участия в исследовании необходимо дать согласие на обработку данных</div>
+        <div class="error-msg" id="form-error">Заполните обязательные поля или включите Анонимный режим!</div>
+        <button class="btn btn-next" onclick="validateForm()">Начать исследование</button>
+    </div>
+    <!-- МЕТОДИКА: ЭКОНОМИЧЕСКОЕ САМООПРЕДЕЛЕНИЕ -->
+    <div class="step" id="step-econ">
+        <h2><span class="step-num"></span>Экономическое сознание</h2>
+        <div class="instruction">
+            <p>Просим Вас ответить на ряд вопросов. Отметьте тот вариант ответа, который соответствует Вашему мнению. Отвечайте последовательно, не пропуская вопросы.</p>
+        </div>
+        <div id="econ-container"></div>
+        <div class="error-msg" id="econ-error">Ответьте на вопросы, подсвеченные красным!</div>
+        <div class="btn-container"><button class="btn btn-back" onclick="prevEcon()">Назад</button><button class="btn btn-next" onclick="finishEcon()">Далее</button></div>
+    </div>
+    <!-- МЕТОДИКА 1 -->
+    <div class="step" id="step-bratus">
+        <h2><span class="step-num"></span>Жизненные смыслы</h2>
+        <div class="instruction">
+            <p>Перед вами список из 24 утверждений. Это перечень жизненных смыслов, на которые могут ориентироваться люди.</p>
+            <p>Вам предстоит сделать мягкую рейтинговую оценку представленного списка. Для этого выберите из списка <b>три утверждения</b>, которые занимают <b>1-е место</b> в системе Ваших личных жизненных смыслов, затем три утверждения, которые Вы могли бы поставить на 2-е, на 3-е и т.д. до 8-го места.</p>
+        </div>
+        
+        <p style="text-align:center; font-weight:bold; color:var(--primary); margin-bottom:10px; transition: color 0.3s;" id="bratus-sub">Выберите 3 самых важных</p>
+        
+        <div class="bratus-premise">Смысл моей жизни состоит в том...</div>
+        
+        <div id="bratus-options"></div>
+        <div class="error-msg" id="bratus-error">Выберите ровно 3 пункта!</div>
+        <div class="btn-container"><button class="btn btn-back" onclick="prevBratusRank()">Назад</button><button class="btn btn-next" onclick="nextBratusRank()">Далее</button></div>
+    </div>
+        <!-- МЕТОДИКА: СМЫСЛОЖИЗНЕННЫЕ ОРИЕНТАЦИИ (СЖО) -->
+    <div class="step" id="step-sjo">
+        <h2><span class="step-num"></span>Смысложизненные ориентации</h2>
+        <div class="instruction">
+            <p>Вам будут предложены пары противоположных утверждений. Выберите то из двух утверждений, которое, по Вашему мнению, больше соответствует действительности, и отметьте одну из цифр 1, 2, 3 в зависимости от того, насколько Вы уверены в выборе (или 0, если оба утверждения, на Ваш взгляд, одинаково верны).</p>
+            <p>Чем ближе отметка к утверждению, тем увереннее выбор: <b>3</b> — максимальная уверенность, <b>0</b> — оба утверждения одинаково верны.</p>
+        </div>
+        <div id="sjo-container"></div>
+        <div class="error-msg" id="sjo-error">Ответьте на вопросы, подсвеченные красным!</div>
+        <div class="btn-container"><button class="btn btn-back" onclick="prevSJO()">Назад</button><button class="btn btn-next" onclick="finishSJO()">Далее</button></div>
+    </div>
+    <!-- МЕТОДИКА 2 -->
+    <div class="step" id="step-milman">
+        <h2><span class="step-num"></span>Мотивация</h2>
+        <div class="instruction">
+            <p>Перед вами 14 утверждений, касающихся ваших жизненных стремлений и некоторых сторон вашего образа жизни. Просим вас высказать отношение к ним по каждому из 8 вариантов ответов, проставив одну из следующих оценок:</p>
+            <ul><li><b>да, согласен</b> </li><li><b>пожалуй согласен</b> </li><li><b>когда как, согласен в некоторой степени</b> </li><li><b>нет, не согласен / не знаю</b> </li></ul>
+            <p>Старайтесь отвечать быстро, не задумывайтесь долго над ответами, отвечайте на вопросы последовательно, от 1 до 14. На всю работу у вас должно уйти не более 20 минут.</p>
+        </div>
+        <div id="milman-container"></div>
+        <div class="error-msg" id="milman-error">Ответьте на вопросы, подсвеченные красным!</div>
+        <div class="btn-container"><button class="btn btn-back" onclick="prevMilman()">Назад</button><button class="btn btn-next" onclick="finishMilman()">Далее</button></div>
+    </div>
+    <!-- МЕТОДИКА 3 -->
+    <div class="step" id="step-ipl">
+        <h2><span class="step-num"></span>Инновации</h2>
+        <div class="instruction">
+            <p>Вашему вниманию предлагается ряд высказываний, каждое из которых необходимо отнести к себе и решить, в какой мере оно описывает Вашу жизненную позицию.</p>
+            <p>Выбор ответа нужно делать <b>по первому побуждению, затрачивая на каждый вопрос не более 10-15 секунд,</b> а затем отметить его в соответствующей графе бланка ответов.</p>
+            <p>Варианты ответов:</p>
+            <ul><li><b>1</b> — Не согласен</li><li><b>2</b> — Скорее не согласен</li><li><b>3</b> — Сложно сказать</li><li><b>4</b> — Скорее согласен</li><li><b>5</b> — Согласен</li></ul>
+        </div>
+        <div id="ipl-container"></div>
+        <div class="error-msg" id="ipl-error">Ответьте на вопросы, подсвеченные красным!</div>
+        <div class="btn-container"><button class="btn btn-back" onclick="prevIPL()">Назад</button><button class="btn btn-success" onclick="finishSurvey()">Получить результат</button></div>
+    </div>
+    <div class="step" id="step-loading" style="text-align:center; padding: 40px 0;">
+        <h2 id="loading-title" style="color:var(--primary)">Обработка результатов...</h2>
+        <div class="spinner" id="loading-spinner"></div>
+        
+        <div class="success-checkmark" id="success-checkmark" style="display:none;">
+            <svg viewBox="0 0 52 52">
+                <circle class="checkmark-circle" cx="26" cy="26" r="25" />
+                <path class="checkmark-check" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+            </svg>
+        </div>
+        <p id="loading-text">Пожалуйста, не закрывайте страницу</p>
+    </div>
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div class="step" id="step-results">
+        <h1 style="color:var(--success)">Исследование завершено!</h1>
+        <p id="final-msg" style="text-align:center">Данные обрабатываются...</p>
+        
+        <div class="dl-section">
+            <h3 style="margin-top:0">📁 Ваши результаты</h3>
+            <p style="font-size:0.9em; margin-bottom:15px; color:var(--text-muted); transition: color 0.3s;">
+                Данные автоматически отправляются исследователю. Для себя вы можете скачать полную интерпретацию с графиками или ознакомиться с интерпретаицией ваших результатов ниже.
+            </p>
+            
+            <div style="display:flex; justify-content:center; margin-bottom:10px;">
+                <button class="btn btn-primary" style="background:#e74c3c; width:auto; padding:12px 25px; font-size: 1.05em;" onclick="exportReportPDF()">
+                    📄 Скачать PDF отчет
+                </button>
+            </div>
+            <details style="margin-top: 15px; text-align: left; background: var(--surface); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text-title); transition: color 0.3s;">⚙️ Резервное сохранение </summary>
+                <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 10px; transition: color 0.3s;">
+                    Используйте эти кнопки <b>только</b> если при отправке в облако произошла ошибка, чтобы передать данные вручную.
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px;">
+                    <button class="btn btn-success" style="flex:1; padding: 10px; font-size: 0.9em;" onclick="downloadJSON()">📥 Скачать .json</button>
+                    <button class="btn btn-secondary" style="flex:1; padding: 10px; margin-top:0; font-size: 0.9em;" onclick="copyResult()">📋 Скопировать текст</button>
+                </div>
+                <textarea id="result-area" readonly></textarea>
+                <p id="copy-msg" style="color:var(--success); display:none; font-weight:bold; margin-top:5px; text-align:center;">Скопировано!</p>
+            </details>
+            <div style="margin-top: 30px; text-align: center; font-size: 0.9em; color: var(--text-muted); line-height: 1.5;">
+                Если у вас есть пожелания по функционалу интерфейса или вы хотите разработать похожую систему для своих исследовательских задач:<br>
+                <div style="margin-top: 8px; display: flex; justify-content: center; gap: 20px;">
+                    <a href="https://t.me/Ol_Mi" target="_blank" style="color: var(--text-muted); text-decoration: none; font-weight: 600; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                        <i class="fa-brands fa-telegram"></i> Telegram
+                    </a>
+                    <span class="copy-email" onclick="copyEmailToClipboard('olmi.works@gmail.com', this)" style="color: var(--text-muted); font-weight: 600; display: inline-block;">
+                        <i class="fa-solid fa-envelope"></i> Email
+                        <span class="copy-tooltip" style="bottom: 150%;">Скопировано!</span>
+                    </span>
+                </div>
+            </div>
+
+        </div>
+        <h2 style="margin-top:40px;">📊 Интерпретация результатов</h2>
+        <div style="background:var(--anon-bg); border:1px solid var(--anon-border); color:var(--anon-text); padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.95em; line-height:1.6; transition: all 0.3s;">
+    <b>Внимание!</b> Результаты и интерпретации, полученные без участия специалистов, не следует воспринимать слишком серьезно.
+    Диагностическую ценность имеют только исследования, проведенные профессиональным психологом.
+</div>
+        <div class="res-block" id="res-bratus">
+    <h3><span class="res-num" data-block="bratus"></span>Система жизненных смыслов</h3>
+            <p>Чем выше столбец (меньше баллов), тем <b>важнее</b> для вас эта сфера.</p>         
+            <div id="textBratus" style="margin-top:15px; font-size:0.9em; line-height:1.6;"></div>
+            <button class="btn btn-secondary toggle-details" data-target="detailsBratus" onclick="toggleDetails('detailsBratus')"> 
+                Подробнее <span class="detail-arrow"><svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 7 L6 1 L11 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </span>
+            </button>
+            <div id="detailsBratus" style="display:none; margin-top:15px; font-size:0.9em; line-height:1.6;">
+            <p>В зависимости от полученной суммы по каждой из категорий, вы можете оценить представленность каждой из категорий в вашей личной системе жизненных смыслов.</p>
+
+                <p> <b>• Гедонистические смыслы.</b> Основаны на потребности человека получать удовольствие от жизни, быть счастливым, наслаждаться всем разнообразием доступных человеку эмоций и ощущений.</p>
+                
+                <p> <b>• Статусные смыслы.</b> Основаны на потребности человека занимать высокое положение в обществе, активно строить карьеру, добиваться успеха и признания в глазах окружающих.</p>
+                
+                <p> <b>• Коммуникативные смыслы.</b> Основаны на потребности человека общаться с другими людьми, переживать эмоции, связанные с общением, чувствовать свою нужность и причастность к жизни других людей.</p>
+                
+                <p> <b>• Семейные смыслы.</b> Основаны на потребности человека заботиться о членах своей семьи, жить ради нее, передавать все лучшее собственным детям, участвовать в судьбе родных и близких людей.</p>
+                
+                <p> <b>• Экзистенциальные смыслы.</b> Основаны на потребности человека придавать ценность самому проживанию жизни, иметь свободу выбора, испытывать любовь во всех ее проявлениях.</p>
+                
+                <p> <b>• Когнитивные смыслы.</b> Основаны на потребности человека познавать жизнь, разбираться в противоречиях окружающего мира и собственной личности, искать смысл и причины происходящего.</p>
+                
+                <p> <b>• Альтруистические смыслы.</b> Основаны на потребности человека бескорыстно помогать другим людям, оказывать содействие, делать добро, служить общему благу, пренебрегая собственной выгодой.</p>
+                
+                <p> <b>• Смыслы самореализации.</b> Основаны на потребности человека исполнить свое предназначение, реализовать все свои способности и возможности, совершенствовать свою личность и отношения с окружающим миром.</p>
+            </div>
+        </div>
+        <div class="res-block" id="res-milman">
+    <h3><span class="res-num" data-block="milman"></span>Мотивационная структура личности</h3>
+            <p>Сравнение желаемого (Идеальное) и действительного (Реальное). Обобщённый профиль: интеграция жизненной и профессиональной сфер.</p>
+            <canvas id="chartMilman" height="400"></canvas>
+            <div id="textMilman" style="margin-top:15px;"></div>
+
+            <button class="btn btn-secondary toggle-details" data-target="detailsMilman" onclick="toggleDetails('detailsMilman')">
+                Подробнее <span class="detail-arrow"><svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 7 L6 1 L11 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div id="emoWarningBlock" style="display:none; margin-bottom:15px; padding:12px; border:1px solid var(--warning); background:var(--anon-bg); color:var(--anon-text); border-radius:8px; font-size:0.95em; transition: all 0.3s;">
+                </div>
+                <div id="detailsMilman" style="display:none; margin-top:15px; font-size:0.9em; line-height:1.6;">
+                <h3>Жизнь: Идеал и Реальность</h3>
+                <canvas id="chartMilmanLife" height="200"></canvas>
+                <div id="textMilmanLife" style="margin-top:10px; margin-bottom:20px;"></div>
+                <h3 style="margin-top:30px">Работа / Учёба: Идеал и Реальность</h3>
+                <canvas id="chartMilmanWork" height="200"></canvas>
+                <div id="textMilmanWork" style="margin-top:10px; margin-bottom:20px;"></div>
+                <h3 style="margin-top:30px">Эмоциональный профиль</h3>
+                <canvas id="chartMilmanEmo" height="200"></canvas>
+</div>
+        </div>
+        <div class="res-block" id="res-ipl">
+    <h3><span class="res-num" data-block="ipl"></span>Инновационный потенциал личности</h3>
+            <div id="iplDetails"></div>
+            <div id="textIPL"></div>
+
+            <button class="btn btn-secondary toggle-details" data-target="detailsIPL" onclick="toggleDetails('detailsIPL')">
+                Подробнее <span class="detail-arrow"><svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 7 L6 1 L11 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div id="detailsIPL" style="display:none; margin-top:15px; font-size:0.9em; line-height:1.6;"></div>
+        </div>
+        <div style="text-align:center; margin-top:30px;">
+            <button class="btn btn-red" onclick="clearState()">Начать заново</button>
+        </div>
+    </div>
+</div>
+<!-- модальное окно -->
+<div id="user-import-modal">
+    <div class="import-modal-content">
+        <span class="import-close-btn" onclick="hideUserImportModal()">&times;</span>
+        <h3>Загрузить результат</h3>
+        <div id="user-drop-zone">
+            <p style="margin:0; font-size:1.1em; color:var(--text-main); transition: color 0.3s;">Перетащите файл .json сюда</p>
+            <div class="import-or-divider" style="color:var(--text-muted); transition: color 0.3s;">или</div>
+            
+            <button class="btn btn-secondary" style="padding: 12px 20px; font-size:16px; margin-top:0; background-color: var(--primary); color: #fff; border-color: var(--primary);" onclick="document.getElementById('user-file-input').click();">Выберите файл</button>
+            
+            <input type="file" id="user-file-input" accept=".json,application/json" style="display:none;">
+        </div>
+        <div class="import-or-divider">или вставьте текст из файла</div>
+        <textarea id="user-paste-area" placeholder="Вставьте сюда содержимое .json файла..."></textarea>
+        <button class="btn btn-success" style="width:100%; margin-top:10px;" onclick="processPastedJSON()">Применить</button>
+        
+        <div id="user-import-error"></div>
+    </div>
+</div>
+<!-- xxx.js -->
+    <script src="js/config.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/registry.js"></script>
+    <script src="js/sjo.js"></script>
+    <script src="js/econ_data.js"></script>
+    <script src="js/econ.js"></script>
+    <script src="js/econ_result.js"></script>
+    <script src="js/scoring.js"></script>
+    <script src="js/sync.js"></script>
+    <script src="js/pdf_export.js"></script>
+    <script src="js/app.js"></script>
+
+<button id="dev-autofill-btn" onclick="devAutoFill()" style="display:none; position:fixed; top:70px; right:15px; z-index:9999; background:#e74c3c; color:white; padding:12px 20px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+    🚀 DEV: Заполнить ответы
+</button>
+</div> <div class="site-footer">
+    &copy; 2026. Разработка психодиагностических систем и дашбордов. <br>
+    Связаться с разработчиком: 
+    <a href="https://t.me/Ol_Mi" target="_blank" title="Написать в Telegram">
+        <i class="fa-brands fa-telegram"></i> @Ol_Mi
+    </a> 
+    <span style="margin: 0 10px; color: var(--border);">|</span>
+    <span class="copy-email" onclick="copyEmailToClipboard('olmi.works@gmail.com', this)" title="Нажмите, чтобы скопировать почту">
+        <i class="fa-solid fa-envelope"></i> olmi.works@gmail.com
+        <span class="copy-tooltip">Скопировано!</span>
+    </span>
+</div>
+</div>
+</body>
+</html>
