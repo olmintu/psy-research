@@ -538,19 +538,25 @@ window.chartM = new Chart(document.getElementById('chartMilman').getContext('2d'
         scales: { y: { min: 0 } }
     }
 });
+if (typeof applyChartsTheme === 'function') applyChartsTheme();
 document.getElementById('textMilman').innerHTML = `
-    <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+    <div style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
         Выше показан <b>обобщённый профиль мотивации</b>: сравнение идеального и реального.
         Подробные профили (жизнь, работа, эмоции) см. во вкладке «Подробнее».
-        <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-        <div><b>Общий тип мотивационного профиля:</b> ${motivationTypeText}</div>
-        <div><p>   </p> </div>
-        <div><b>Тип эмоционального профиля:</b> ${emoTypeText}</div>
+        <div style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
+            <div><b>Общий тип мотивационного профиля:</b> ${motivationTypeText}</div>
+            <div><p></p></div>
+            <div><b>Тип эмоционального профиля:</b> ${emoTypeText}</div>
+        </div>
     </div>
 `;
         let ipl_level = ipl_sum >= 118 ? "Высокий" : (ipl_sum >= 95 ? "Средний" : "Низкий");
         let ipl_cls = ipl_sum >= 118 ? "bg-green" : (ipl_sum >= 95 ? "bg-blue" : "bg-red");
-        let ipl_text = ipl_sum >= 118 ? "<b>Высокий уровень инновационного потенциала личности.</b> Вы ориентированы на развитие, поиск новых возможностей и преобразование ситуации. Новые задачи и изменения скорее воспринимаются как интересный вызов, чем как угроза. Вам свойственно самостоятельно искать новые способы действий и пересматривать привычные подходы. " : (ipl_sum >= 95 ? "<b>Средний уровень инновационного потенциала личности .</b> Вы в целом открыты к новому, но подходите к изменениям избирательно и осознанно. Прежде чем что-то менять, вам важно понять смысл, пользу и возможные последствия. Вы готовы осваивать новое, если видите в этом практическую ценность." : "<b>Низкий уровень инновационного потенциала личности.</b> Вы в целом открыты к новому, но подходите к изменениям избирательно и осознанно. Прежде чем что-то менять, вам важно понять смысл, пользу и возможные последствия. Вы готовы осваивать новое, если видите в этом практическую ценность.");
+        let ipl_text = ipl_sum >= 118
+            ? "<b>Высокий уровень инновационного потенциала личности.</b> Вы ориентированы на развитие, поиск новых возможностей и преобразование ситуации. Новые задачи и изменения скорее воспринимаются как интересный вызов, чем как угроза. Вам свойственно самостоятельно искать новые способы действий и пересматривать привычные подходы."
+            : (ipl_sum >= 95
+                ? "<b>Средний уровень инновационного потенциала личности.</b> Вы в целом открыты к новому, но подходите к изменениям избирательно и осознанно. Прежде чем что-то менять, вам важно понять смысл, пользу и возможные последствия. Вы готовы осваивать новое, если видите в этом практическую ценность."
+                : "<b>Низкий уровень инновационного потенциала личности.</b> Вы предпочитаете стабильность, предсказуемость и проверенные временем способы действий. Изменения и необходимость перестраиваться под новые условия могут вызывать дискомфорт или настороженность. Вам комфортнее работать и жить в привычном, устоявшемся ритме.");
         let iplPercent = Math.round((ipl_sum / 180) * 100);
 let iplColor =
     ipl_sum >= 118 ? "linear-gradient(90deg, #2ecc71, #27ae60)" :
@@ -559,7 +565,7 @@ let iplColor =
 
         document.getElementById('textIPL').innerHTML = `
             <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
-                <div style="font-size:2.5em; font-weight:bold; color:#2c3e50;">${ipl_sum}</div>
+                <div style="font-size:2.5em; font-weight:bold; color:var(--primary);">${ipl_sum}</div>
                 <div><span class="score-badge ${ipl_cls}" style="font-size:1.1em;">Уровень: ${ipl_level}</span></div>
             </div>
             <div style="margin-top:15px;">
@@ -584,7 +590,7 @@ let styleHTML = `<div style="
 // Если стиль не определен, изменяем стиль фона
 if(!iplStyleDefined) {
     styleHTML = styleHTML.replace('background:var(--surface);', 'background:var(--anon-bg);')
-                         .replace('border:1px solid var(--border);', 'border:1px solid var(--border);');
+                         .replace('border:1px solid var(--border);', 'border:1px solid var(--anon-border);');
 }
 styleHTML += `<h2 style="margin-top:0;">🧬 Стиль реализации инновационного потенциала</h2>`;
 if (!iplStyleDefined) {
@@ -665,7 +671,7 @@ let aspectTypeHTML = `
 // Если аспекты не определены, изменяем стиль фона
 if(!aspectsDefined) {
     aspectTypeHTML = aspectTypeHTML.replace('background:var(--surface);', 'background:var(--anon-bg);')
-                                   .replace('border:1px solid var(--border);', 'border:1px solid var(--border);');
+                                   .replace('border:1px solid var(--border);', 'border:1px solid var(--anon-border);');
 }
 if (!aspectsDefined) {
     

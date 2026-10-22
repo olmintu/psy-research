@@ -2,8 +2,8 @@
 // МОДУЛЬ ЭКСПОРТА PDF 
 // ==========================================
 const txt = (v) => (v !== undefined && v !== null) ? String(v) : '-';
-window.exportReportPDF = async function() {
-    const btn = event ? event.target : null;
+window.exportReportPDF = async function(btnEl) {
+    const btn = btnEl || (typeof event !== 'undefined' && event ? event.currentTarget : null);
     if(btn) { btn.innerText = "⏳ Подготовка..."; btn.disabled = true; }
     try {
         // Загружаем логотип (Асинхронно!)
@@ -40,6 +40,7 @@ window.exportReportPDF = async function() {
         const commonOpts = {
             animation: false,
             responsive: false,
+            layout: { padding: { right: 35 * SCALE, top: 15 * SCALE } },
             // Увеличиваем базовый шрифт, чтобы на большой картинке он не был мелким
             plugins: { legend: { display: false } },
             scales: {
@@ -130,8 +131,14 @@ window.exportReportPDF = async function() {
         const docDef = {
             content: [
                 // ЛОГОТИП И ЗАГОЛОВОК (В ОДНОЙ СТРОКЕ)
-                {columns: [{image: logoBase64 ? logoBase64 : null, width: 50,height: 50},{text: 'Результаты психологического исследования',style: 'header',alignment: 'left',
-                margin: [20, 10, 0, 0] }],columnGap: 10,margin: [0, 0, 0, 20] },
+                {
+                    columns: [
+                        ...(logoBase64 ? [{ image: logoBase64, width: 50, height: 50 }] : []),
+                        { text: 'Результаты психологического исследования', style: 'header', alignment: 'left', margin: [20, 10, 0, 0] }
+                    ],
+                    columnGap: 10,
+                    margin: [0, 0, 0, 20]
+                },
                 { text: `Участник: ${state.meta.fio || 'Аноним'} | Дата: ${timestamp}`, style: 'subheader' },
                 ...extraStart, 
                 // БРАТУСЬ
@@ -216,7 +223,7 @@ window.exportReportPDF = async function() {
                 code: { fontSize: 8, font: 'Roboto', background: '#f5f5f5' }
             }
         };
-        pdfMake.createPdf(docDef).download(`Result_${state.meta.fio}.pdf`);
+        pdfMake.createPdf(docDef).download(`Result_${state.meta.fio || 'Anon'}.pdf`);
     } catch (err) {
         console.error("PDF Error:", err);
         alert("Ошибка: " + err.message);
@@ -323,12 +330,16 @@ function getImageDataUrl(url) {
         const img = new Image();
         img.setAttribute('crossOrigin', 'anonymous');
         img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/png'));
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            } catch (e) {
+                resolve(null);
+            }
         };
         img.onerror = () => resolve(null); // Если картинки нет, вернем null
         img.src = url;
