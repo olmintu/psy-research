@@ -142,7 +142,7 @@ window.exportReportPDF = async function(btnEl) {
                 { text: `Участник: ${state.meta.fio || 'Аноним'} | Дата: ${timestamp}`, style: 'subheader' },
                 ...extraStart, 
                 // БРАТУСЬ
-                { text: '\n' + blockNum('bratus') + 'Система жизненных смыслов', style: 'h2' },
+                { text: blockNum('bratus') + 'Система жизненных смыслов', style: 'h2' },
                 { image: cBr, width: 550 },
                 { text: 'Таблица 1. Детальные ранги:', margin:[0,10,0,5], bold:true },
                 { table: { widths: ['30%', '15%', '15%', '15%', '10%', '15%'], body: tables.bratus }, layout: 'lightHorizontalLines' },
@@ -206,9 +206,9 @@ window.exportReportPDF = async function(btnEl) {
 
                 { text: 'ИПЛ на уровнях взаимодействия с миром:', style: 'h3', margin:[0,15,0,5] },
                 { image: cIplL, width: 500 },
-                ...extraIpl,
                 { text: 'Таблица 3. Результаты ИПЛ:', bold:true, margin:[0,15,0,5] },
                 { table: { body: tables.ipl } },
+                ...extraIpl,
 
                 { text: 'Сырые данные (JSON):', style: 'h3' },
                 { text: JSON.stringify(state), style: 'code' }

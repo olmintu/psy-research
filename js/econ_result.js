@@ -212,12 +212,14 @@ function renderEconResult(container) {
          '<div id="detailsEcon" style="display:none; margin-top:15px;">' +
          '<div class="econ-res-title">Экономический профиль</div>' +
          '<p class="econ-res-intro">Ваш профиль по ' + res.dims.length + ' параметрам. У каждого параметра есть несколько возможных типов; ниже указан тот, который соответствует именно Вашим ответам.</p>' +
-         '<div class="econ-res-grid">' + res.dims.map(d =>
-            '<div class="econ-res-card">' +
+         '<div class="econ-res-grid">' + res.dims.map(d => {
+            const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return '<div class="econ-res-card">' +
             '<div class="econ-res-param"><span class="econ-lab">Параметр:</span> ' + d.emoji + ' ' + d.topic + '</div>' +
             '<div class="econ-res-type"><span class="econ-lab">Тип:</span> ' + d.type.name + '</div>' +
-            '<div class="econ-res-text"><span class="econ-lab">Описание:</span> ' + d.text + '</div>' +
-            '<div class="econ-res-facts">' + d.facts.map(f => '<div>' + f + '</div>').join('') + '</div></div>').join('') +
+            '<div class="econ-res-text"><span class="econ-lab">Описание:</span> ' + esc(d.text) + '</div>' +
+            '<div class="econ-res-facts">' + d.facts.map(f => '<div>' + esc(f) + '</div>').join('') + '</div></div>';
+         }).join('') +
          '</div></div>';
     container.innerHTML = h;
     return res;
