@@ -1,15 +1,29 @@
 function downloadJSON() { 
-    const fn = `Res_${state.meta.fio.replace(/[^а-яА-Яa-zA-Z0-9]/g,'_')}.json`; 
+    const safeFio = (state.meta && state.meta.fio ? state.meta.fio : 'Anon').replace(/[^а-яА-Яa-zA-Z0-9]/g, '_');
+    const fn = `Res_${safeFio}.json`; 
     const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"}); 
     const url = URL.createObjectURL(blob); 
-    const a = document.createElement('a'); a.href = url; a.download = fn; document.body.appendChild(a); a.click(); a.remove(); }
+    const a = document.createElement('a'); a.href = url; a.download = fn; document.body.appendChild(a); a.click(); a.remove(); 
+    URL.revokeObjectURL(url);
+}
 
 function copyResult() { 
     let txt = document.getElementById('result-area'); 
     txt.style.display = 'block'; 
-    txt.select(); 
-    document.execCommand('copy'); 
-    document.getElementById('copy-msg').style.display = 'block'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt.value).then(() => {
+            document.getElementById('copy-msg').style.display = 'block';
+        }).catch(() => {
+            txt.select();
+            document.execCommand('copy');
+            document.getElementById('copy-msg').style.display = 'block';
+        });
+    } else {
+        txt.select(); 
+        document.execCommand('copy'); 
+        document.getElementById('copy-msg').style.display = 'block'; 
+    }
+}
 
 // --- ЛОГИКА МОДАЛЬНОГО ОКНА ЗАГРУЗКИ ---
 // Показываем окно
