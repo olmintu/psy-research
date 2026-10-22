@@ -14,18 +14,18 @@ function toggleTheme() {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('app_theme', newTheme);
-    // Определяем цвета для осей и текста графиков в зависимости от темы
-    const textColor = newTheme === 'dark' ? '#f4f6f8' : '#333333';
-    const gridColor = newTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    // Перерисовываем графики , если они открыты, чтобы обновить цвет текста
-    // Перебираем все существующие инстансы Chart.js на странице и обновляем их
+    applyChartsTheme();
+}
+
+function applyChartsTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f4f6f8' : '#333333';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     for (let id in Chart.instances) {
         let chart = Chart.instances[id];
-        // Обновляем цвет текста легенды
         if (chart.options.plugins && chart.options.plugins.legend) {
             chart.options.plugins.legend.labels.color = textColor;
         }
-        // Обновляем цвета осей X и Y
         if (chart.options.scales) {
             if (chart.options.scales.x) {
                 if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = textColor;
@@ -36,7 +36,6 @@ function toggleTheme() {
                 if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
             }
         }
-        // Принудительно перерисовываем график с новыми настройками
         chart.update();
     }
 }
@@ -55,8 +54,8 @@ function proceedAsCompleteAnon() {
 document.getElementById('soft-ask-modal').style.display = 'none';
 
 // Снимаем возможную подсветку
-document.getElementById('age').style.borderColor = "#ddd";
-document.getElementById('gender').style.borderColor = "#ddd";
+document.getElementById('age').style.borderColor = "var(--input-border)";
+document.getElementById('gender').style.borderColor = "var(--input-border)";
 
 saveStateToLocal();
 goNext('form');
@@ -112,7 +111,19 @@ function checkFast(blockId, minSeconds, flag) {
 }
 
 // --- PERSISTENCE ---
-function saveStateToLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); updateProgress(); }
+function saveStateToLocal() {
+    const formStep = document.getElementById('step-form');
+    if (formStep && formStep.classList.contains('active') && !state.finished && state.meta.mode !== 'dev') {
+        const formIds = ['fio','gender','age','is_kmns','kmns_name','family_status','children','financial_support','is_working','work_type','has_secondary_edu','edu_status','university','speciality','edu_level','edu_basis','course'];
+        formIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) state.meta[id] = el.value;
+        });
+        collectOptionalMeta();
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateProgress();
+}
 function loadStateFromLocal() {
 let saved = localStorage.getItem(STORAGE_KEY);
 if (saved) Object.assign(state, JSON.parse(saved));
@@ -131,7 +142,7 @@ if (localStorage.getItem(STORAGE_KEY)) {
     } else if (FLOW.includes(state.step)) {
         switchStep('step-form', BLOCKS[state.step].step);
         if (BLOCKS[state.step].enter) BLOCKS[state.step].enter();
-    } else if (state.meta.fio) {
+    } else if (Object.keys(state.meta).length > 0) {
         restoreForm();
     }
 }
@@ -324,7 +335,6 @@ else if(status === 'Закончил') ids = ids.concat(['university','specialit
 let valid = true;
 anonMode = document.getElementById('anon_mode').checked;
 collectOptionalMeta();
-anonMode = document.getElementById('anon_mode').checked;
 
 if (!anonMode) {
     // --- ОБЫЧНЫЙ РЕЖИМ --- (Строгая проверка всех полей)
@@ -334,7 +344,7 @@ if (!anonMode) {
             if(el) el.style.borderColor = "var(--error)"; 
             valid = false; 
         } else { 
-            if(el) el.style.borderColor = "#ddd"; 
+            if(el) el.style.borderColor = "var(--input-border)"; 
             state.meta[id] = el.value; 
         }
     });
@@ -357,7 +367,7 @@ if (!anonMode) {
         } else {
             state.meta[id] = "Аноним"; // Заполняем пустоты
         }
-        if(el) el.style.borderColor = "#ddd"; // Убираем красные рамки, если были
+        if(el) el.style.borderColor = "var(--input-border)"; // Убираем красные рамки, если были
     });
     // Защита от дурака: принудительно стираем ФИО в анонимном режиме
     state.meta['fio'] = "Аноним"; 
@@ -434,6 +444,7 @@ if(c.innerHTML) {
         let row = document.getElementById('row_m_' + k);
         if(row) row.classList.add('answered');
     }
+    updateProgress();
     return; 
 }
 milman_qs.forEach((q, qi) => {
@@ -480,6 +491,7 @@ if(c.innerHTML) {
         let row = document.getElementById('row_ipl_' + k);
         if(row) row.classList.add('answered');
     }
+    updateProgress();
     return;
 }
 let h = `<table><thead><tr><th>Утверждение</th><th>Не согласен</th><th>Скорее не согласен</th><th>Сложно сказать</th><th>Скорее согласен</th><th>Согласен</th></tr></thead><tbody>`;
@@ -520,13 +532,14 @@ function renderSJO() {
         });
         c.innerHTML = h;
     }
-    // восстановить ранее данные ответы
+// восстановить ранее данные ответы
     for (let k in (state.sjo || {})) {
         const el = document.querySelector(`input[name="sjo_${k}"][value="${state.sjo[k]}"]`);
         if (el) el.checked = true;
         const row = document.getElementById('row_sjo_' + k);
         if (row) row.classList.add('answered');
     }
+    updateProgress();
 }
 function saveSJO(i, v) {
     if (!state.sjo) state.sjo = {};
@@ -559,16 +572,18 @@ function prevSJO() { goPrev('sjo'); }
 // --- ФИНАЛ ---
 function finishSurvey(skipFetch = false) {
 if(!skipFetch && !validateGroup('ipl', 36, 1)) return;
-state.finished = true; 
-//Расчет итогового времени
-state.timing.end = Date.now(); 
-let total_sec = Math.round((state.timing.end - state.timing.start) / 1000);
-let m = Math.floor(total_sec / 60);
-let s = total_sec % 60;
-// Формат ММ.СС (с добавлением ведущего нуля для секунд, например 10.05)
-state.timing.total_formatted = m + "." + (s < 10 ? "0" : "") + s;
-// Проверка Fast Clicker для ИПЛ (36 вопросов быстрее 60 сек)
-checkFast('ipl', 60, 'FAST_IPL');
+if (!skipFetch) {
+    state.finished = true; 
+    // Расчет итогового времени
+    state.timing.end = Date.now(); 
+    let total_sec = Math.round((state.timing.end - state.timing.start) / 1000);
+    let m = Math.floor(total_sec / 60);
+    let s = total_sec % 60;
+    // Формат ММ.СС (с добавлением ведущего нуля для секунд, например 10.05)
+    state.timing.total_formatted = m + "." + (s < 10 ? "0" : "") + s;
+    // Проверка Fast Clicker для ИПЛ (36 вопросов быстрее 60 сек)
+    checkFast('ipl', 60, 'FAST_IPL');
+}
 saveStateToLocal();
 updateProgress();
 if(skipFetch) {
@@ -758,6 +773,7 @@ window.chartMilmanEmo = new Chart(ctxEmo.getContext("2d"), {
     }
 });
 }
+applyChartsTheme();
 }
 // Очистка предупреждающей подсветки при вводе данных (UX Soft Ask)
 const ageInput = document.getElementById('age');
