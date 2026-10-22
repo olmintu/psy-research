@@ -130,7 +130,31 @@ if (saved) Object.assign(state, JSON.parse(saved));
 }
 function clearState() { localStorage.removeItem(STORAGE_KEY); window.location.reload(); }
 
+function initAnonSetting() {
+    if (typeof ALLOW_ANON !== 'undefined' && !ALLOW_ANON) {
+        const cb = document.getElementById('anon_mode');
+        const lbl = document.getElementById('anon_label');
+        const warn = document.getElementById('anon_warning');
+        const err = document.getElementById('form-error');
+        if (cb) { cb.checked = false; cb.style.display = 'none'; }
+        if (lbl) {
+            lbl.removeAttribute('for');
+            lbl.style.cursor = 'default';
+            lbl.innerHTML = '<b>🔒 Конфиденциальность и точность исследования</b>';
+        }
+        if (warn) {
+            warn.style.display = 'block';
+            warn.innerHTML = `
+                Опрос является анонимным: все результаты передаются в <b>обезличенном формате</b>, обрабатываются только в обобщённом виде и никуда не распространяются.<br><br>
+                Сведения об участнике помогают понять, для каких групп людей полученные результаты характерны в большей степени. Отказ от их указания может уменьшить точность и обобщаемость выводов, поэтому <b>просим ответить на все вопросы анкеты — каждый ваш ответ делает исследование точнее!</b>
+            `;
+        }
+        if (err) err.textContent = 'Пожалуйста, заполните все обязательные поля!';
+    }
+}
+
 // Запускаем инициализацию после загрузки страницы
+window.addEventListener('DOMContentLoaded', initAnonSetting);
 window.addEventListener('DOMContentLoaded', initUserImporter);
 window.addEventListener('DOMContentLoaded', applyStepNumbers);
 // INIT
@@ -148,7 +172,7 @@ if (localStorage.getItem(STORAGE_KEY)) {
 }
 };
 function restoreForm() {
-if (state.meta.mode === 'anon' || state.meta.fio === "Аноним") {
+if ((typeof ALLOW_ANON === 'undefined' || ALLOW_ANON) && (state.meta.mode === 'anon' || state.meta.fio === "Аноним")) {
     document.getElementById('anon_mode').checked = true;
     toggleAnon();
 }
