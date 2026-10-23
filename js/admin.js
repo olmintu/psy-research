@@ -2,9 +2,10 @@
 // АДМИН-ПАНЕЛЬ И ОБРАБОТЧИК ДАННЫХ (ПОРТ process_survey.py)
 // ======================================================================
 
-let adminRawItems = [];     // Сырые распознанные записи: [{ timestamp, data, rowIndex }]
+let adminRawItems = [];     // Сырые записи: [{ uid, timestamp, data, rowIndex, manualExcluded }]
 let adminParseErrors = [];  // Лог ошибок парсинга строк
-let adminFilteredRows = []; // Итоговые строки после применения фильтров
+let adminTableRows = [];    // Строки, отображаемые в таблице (после фильтров DEV / Fast)
+let adminFilteredRows = []; // Итоговые строки, идущие на экспорт (не исключенные вручную)
 
 // Схема экономического опросника (из process_survey.py)
 const ADMIN_ECON_SCHEMA = [
@@ -88,8 +89,12 @@ function returnToAdminPanel() {
     switchStep('step-results', 'step-admin');
 }
 
-// Инициализация Drag-and-Drop для админки
+// Инициализация Drag-and-Drop и ключа облака для админки
 window.addEventListener('DOMContentLoaded', () => {
+    const savedKey = localStorage.getItem('admin_cloud_key');
+    const keyInput = document.getElementById('admin-cloud-key');
+    if (savedKey && keyInput) keyInput.value = savedKey;
+
     const dropZone = document.getElementById('admin-drop-zone');
     const fileInput = document.getElementById('admin-file-input');
     if (!dropZone || !fileInput) return;
@@ -112,14 +117,62 @@ window.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             handleAdminFiles(e.target.files);
+            fileInput.value = ''; // Сбрасываем input, чтобы можно было повторно выбрать тот же файл
         }
     });
 });
 
-// Чтение загруженных файлов (.xlsx / .csv / .json)
-async function handleAdminFiles(fileList) {
+// Генерация уникального ключа анкеты для защиты от дублей при дозагрузке
+function computeRecordUid(timestamp, data) {
+    if (data && data.meta && data.meta.submission_id) {
+        return 'sub_' + String(data.meta.submission_id);
+    }
+    const fio = (data && data.meta && data.meta.fio) ? String(data.meta.fio).trim() : '';
+    const tEnd = (data && data.timing && data.timing.end) ? String(data.timing.end) : '';
+    const iplStr = JSON.stringify((data && data.ipl) || {});
+    return `hash_${timestamp || ''}_${fio}_${tEnd}_${iplStr}`;
+}
+
+// Добавление одной анкеты в общий список с проверкой на дубликат
+function addAdminRawRecord(timestamp, data, sourceLabel) {
+    const uid = computeRecordUid(timestamp, data);
+    if (adminRawItems.some(item => item.uid === uid)) {
+        return false; // Дубликат — пропускаем
+    }
+    adminRawItems.push({
+        uid: uid,
+        timestamp: timestamp,
+        data: data,
+        rowIndex: sourceLabel,
+        manualExcluded: false
+    });
+    return true;
+}
+
+// Показ уведомления о результате добавления
+function showImportNotice(addedCount, skippedCount) {
+    const notice = document.getElementById('admin-import-notice');
+    if (!notice) return;
+    notice.style.display = 'block';
+    notice.textContent = `✅ Добавлено новых анкет: ${addedCount}` + (skippedCount > 0 ? ` (пропущено дубликатов: ${skippedCount})` : '');
+}
+
+// Очистка всего списка загруженных анкет
+function clearAdminData() {
+    if (!confirm('Очистить весь текущий список загруженных анкет?')) return;
     adminRawItems = [];
     adminParseErrors = [];
+    adminTableRows = [];
+    adminFilteredRows = [];
+    document.getElementById('admin-controls').style.display = 'none';
+    document.getElementById('btn-clear-admin').style.display = 'none';
+    document.getElementById('admin-import-notice').style.display = 'none';
+}
+
+// Чтение и ДОБАВЛЕНИЕ загруженных файлов (.xlsx / .csv / .json) к текущему списку
+async function handleAdminFiles(fileList) {
+    let added = 0;
+    let skipped = 0;
 
     for (let file of fileList) {
         const ext = file.name.split('.').pop().toLowerCase();
@@ -127,21 +180,17 @@ async function handleAdminFiles(fileList) {
             try {
                 const text = await file.text();
                 const data = JSON.parse(text);
-                adminRawItems.push({
-                    timestamp: new Date(file.lastModified).toLocaleString('ru-RU'),
-                    data: data,
-                    rowIndex: file.name
-                });
+                const ts = new Date(file.lastModified).toLocaleString('ru-RU');
+                if (addAdminRawRecord(ts, data, file.name)) added++;
+                else skipped++;
             } catch (err) {
                 adminParseErrors.push(`Файл ${file.name}: Ошибка чтения JSON (${err.message})`);
             }
         } else {
-            // Читаем Excel / CSV через SheetJS
             try {
                 const buffer = await file.arrayBuffer();
                 const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
                 const firstSheet = wb.Sheets[wb.SheetNames[0]];
-                // Получаем массив массивов (включая заголовок в 0-й строке)
                 const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: null });
 
                 for (let idx = 1; idx < rows.length; idx++) {
@@ -149,22 +198,20 @@ async function handleAdminFiles(fileList) {
                     if (!row || row.length === 0 || (row[0] === null && row[2] === null)) continue;
 
                     const rawTimestamp = row[0];
-                    const jsonCell = row[2]; // 3-я колонка (индекс 2), как в process_survey.py
+                    const jsonCell = row[2];
                     if (jsonCell === null || jsonCell === undefined || String(jsonCell).trim() === '') {
-                        adminParseErrors.push(`Строка Excel ${idx + 1}: Пустая ячейка с JSON в столбце C`);
+                        adminParseErrors.push(`${file.name} (стр. ${idx + 1}): Пустая ячейка с JSON в столбце C`);
                         continue;
                     }
 
                     const jsonStr = String(jsonCell).trim();
                     try {
                         const parsed = JSON.parse(jsonStr);
-                        adminRawItems.push({
-                            timestamp: formatExcelTimestamp(rawTimestamp),
-                            data: parsed,
-                            rowIndex: idx + 1
-                        });
+                        const ts = formatExcelTimestamp(rawTimestamp);
+                        if (addAdminRawRecord(ts, parsed, `${file.name}:${idx + 1}`)) added++;
+                        else skipped++;
                     } catch (jsonErr) {
-                        adminParseErrors.push(`Строка Excel ${idx + 1}: ${jsonErr.message}`);
+                        adminParseErrors.push(`${file.name} (стр. ${idx + 1}): ${jsonErr.message}`);
                     }
                 }
             } catch (err) {
@@ -173,8 +220,68 @@ async function handleAdminFiles(fileList) {
         }
     }
 
-    document.getElementById('admin-controls').style.display = 'block';
+    showImportNotice(added, skipped);
+    document.getElementById('admin-controls').style.display = adminRawItems.length > 0 || adminParseErrors.length > 0 ? 'block' : 'none';
+    document.getElementById('btn-clear-admin').style.display = adminRawItems.length > 0 ? 'inline-block' : 'none';
     renderAdminView();
+}
+
+// Прямая загрузка ответов из Google Таблицы (Этап 4)
+async function fetchFromGoogleSheet() {
+    if (typeof GOOGLE_URL === 'undefined' || !GOOGLE_URL) {
+        alert('В js/config.js не задан адрес GOOGLE_URL!');
+        return;
+    }
+    const keyInput = document.getElementById('admin-cloud-key');
+    const secretKey = keyInput ? keyInput.value.trim() : '';
+    if (!secretKey) {
+        alert('Введите секретный ключ доступа к Google Таблице!');
+        if (keyInput) keyInput.focus();
+        return;
+    }
+    localStorage.setItem('admin_cloud_key', secretKey);
+
+    const statusEl = document.getElementById('admin-cloud-status');
+    const btn = document.getElementById('btn-cloud-sync');
+    if (statusEl) statusEl.innerHTML = '⏳ Подключение к Google Таблице...';
+    if (btn) btn.disabled = true;
+
+    try {
+        const url = `${GOOGLE_URL}?action=get_all&key=${encodeURIComponent(secretKey)}`;
+        const resp = await fetch(url);
+        const result = await resp.json();
+
+        if (!result.ok) {
+            throw new Error(result.error || 'Неверный ключ или ошибка скрипта');
+        }
+
+        let added = 0;
+        let skipped = 0;
+        const rows = result.rows || [];
+
+        rows.forEach((r, idx) => {
+            if (!r.json) return;
+            try {
+                const parsed = typeof r.json === 'string' ? JSON.parse(r.json) : r.json;
+                const ts = formatExcelTimestamp(r.timestamp);
+                if (addAdminRawRecord(ts, parsed, `Cloud:${idx + 2}`)) added++;
+                else skipped++;
+            } catch (err) {
+                adminParseErrors.push(`Google Таблица (стр. ${idx + 2}): ${err.message}`);
+            }
+        });
+
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--success); font-weight:600;">Загружено из облака! (Всего строк: ${rows.length})</span>`;
+        showImportNotice(added, skipped);
+        document.getElementById('admin-controls').style.display = 'block';
+        document.getElementById('btn-clear-admin').style.display = adminRawItems.length > 0 ? 'inline-block' : 'none';
+        renderAdminView();
+    } catch (err) {
+        console.error('Ошибка синхронизации с Google Таблицей:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--error); font-weight:600;">Ошибка: ${err.message}</span>`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 function formatExcelTimestamp(val) {
@@ -572,14 +679,45 @@ function getOrderedColumns(rows) {
     return ordered;
 }
 
+// Включить или исключить одного респондента по галочке в строке
+function toggleRespondentRow(uid, isChecked) {
+    const found = adminRawItems.find(item => item.uid === uid);
+    if (found) {
+        found.manualExcluded = !isChecked;
+        renderAdminView();
+    }
+}
+
+// Включить или исключить всех видимых в таблице респондентов
+function toggleAllRespondents(isChecked) {
+    const visibleUids = new Set(adminTableRows.map(r => r.uid));
+    adminRawItems.forEach(item => {
+        if (visibleUids.has(item.uid)) {
+            item.manualExcluded = !isChecked;
+        }
+    });
+    renderAdminView();
+}
+
+// Полное удаление респондента из загруженного списка
+function deleteRespondentRow(uid) {
+    adminRawItems = adminRawItems.filter(item => item.uid !== uid);
+    if (adminRawItems.length === 0) {
+        document.getElementById('btn-clear-admin').style.display = 'none';
+    }
+    renderAdminView();
+}
+
 // Отрисовка статистики и таблицы в Админ-панели
 function renderAdminView() {
     const excludeDev = document.getElementById('admin-filter-dev').checked;
     const excludeFast = document.getElementById('admin-filter-fast').checked;
 
+    adminTableRows = [];
     adminFilteredRows = [];
     let devCount = 0;
     let fastCount = 0;
+    let manualExcludedCount = 0;
 
     adminRawItems.forEach((item) => {
         const isDev = (item.data.meta && (item.data.meta.mode === 'dev' || item.data.meta.fio === 'DEV'));
@@ -592,11 +730,26 @@ function renderAdminView() {
         if (excludeDev && isDev) return;
         if (excludeFast && isFast) return;
 
-        adminFilteredRows.push({
+        const rowObj = {
+            uid: item.uid,
+            manualExcluded: Boolean(item.manualExcluded),
             processed: processed,
             rawState: item.data
-        });
+        };
+
+        adminTableRows.push(rowObj);
+        if (item.manualExcluded) {
+            manualExcludedCount++;
+        } else {
+            adminFilteredRows.push(rowObj);
+        }
     });
+
+    // Синхронизируем главный чекбокс в шапке таблицы
+    const checkAllEl = document.getElementById('admin-check-all');
+    if (checkAllEl) {
+        checkAllEl.checked = adminTableRows.length > 0 && manualExcludedCount === 0;
+    }
 
     // Сводная статистика
     const totalSelected = adminFilteredRows.length;
@@ -606,19 +759,19 @@ function renderAdminView() {
     statsEl.innerHTML = `
         <div class="admin-stat-card">
             <div class="admin-stat-val">${adminRawItems.length}</div>
-            <div class="admin-stat-lbl">Всего прочитано анкет</div>
+            <div class="admin-stat-lbl">Всего в списке</div>
         </div>
         <div class="admin-stat-card">
             <div class="admin-stat-val" style="color:var(--success);">${totalSelected}</div>
-            <div class="admin-stat-lbl">Идет в выгрузку</div>
+            <div class="admin-stat-lbl">Идет в выгрузку (.xlsx / .sav)</div>
         </div>
         <div class="admin-stat-card">
             <div class="admin-stat-val">${kmnsYes}</div>
             <div class="admin-stat-lbl">Группа КМНС («Да»)</div>
         </div>
         <div class="admin-stat-card">
-            <div class="admin-stat-val" style="color:var(--warning);">${devCount} / ${fastCount}</div>
-            <div class="admin-stat-lbl">DEV / Быстрые кликеры</div>
+            <div class="admin-stat-val" style="color:var(--warning);">${devCount} / ${fastCount} / ${manualExcludedCount}</div>
+            <div class="admin-stat-lbl">DEV / Быстрые / Искл. вручную</div>
         </div>
     `;
 
@@ -634,14 +787,21 @@ function renderAdminView() {
     // Таблица предпросмотра
     const tbody = document.getElementById('admin-preview-tbody');
     tbody.innerHTML = '';
-    adminFilteredRows.forEach((item, idx) => {
+    adminTableRows.forEach((item, idx) => {
         const p = item.processed;
         const tr = document.createElement('tr');
+        if (item.manualExcluded) tr.className = 'admin-row-excluded';
+
         const fastBadge = p.Fast_Clicker === 'No'
             ? `<span class="score-badge bg-green">No</span>`
             : `<span class="score-badge bg-red">${p.Fast_Clicker}</span>`;
 
+        const safeUid = item.uid.replace(/'/g, "\\'");
+
         tr.innerHTML = `
+            <td style="text-align:center;">
+                <input type="checkbox" ${item.manualExcluded ? '' : 'checked'} onchange="toggleRespondentRow('${safeUid}', this.checked)" style="width:18px; height:18px; cursor:pointer; accent-color:var(--primary);">
+            </td>
             <td>${idx + 1}</td>
             <td>${p.Timestamp || '—'}</td>
             <td><b>${p.FIO || '—'}</b></td>
@@ -652,9 +812,14 @@ function renderAdminView() {
             <td>${p.SJO_Total !== null ? p.SJO_Total : '—'}</td>
             <td>${p.IPL_Total || '—'}</td>
             <td>
-                <button type="button" class="btn btn-next" style="padding:6px 12px; font-size:0.82rem; width:auto;" onclick="openRespondentReport(${idx})">
-                    👁️ Отчет
-                </button>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn btn-next" style="padding:6px 10px; font-size:0.82rem; width:auto;" onclick="openRespondentReport(${idx})" title="Открыть профиль и графики">
+                        👁️ Отчет
+                    </button>
+                    <button type="button" class="btn btn-red" style="margin-top:0; padding:6px 10px; font-size:0.82rem; width:auto;" onclick="deleteRespondentRow('${safeUid}')" title="Удалить строку из списка">
+                        🗑️
+                    </button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
@@ -663,7 +828,7 @@ function renderAdminView() {
 
 // Открыть индивидуальный отчет любого респондента прямо из таблицы админки
 function openRespondentReport(idx) {
-    const item = adminFilteredRows[idx];
+    const item = adminTableRows[idx];
     if (!item) return;
     state = JSON.parse(JSON.stringify(item.rawState));
     document.getElementById('btn-back-to-admin').style.display = 'inline-block';

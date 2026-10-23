@@ -371,3 +371,7 @@
 .admin-table { margin-bottom: 0; font-size: 0.88rem; }
 .admin-table th, .admin-table td { padding: 10px 8px; text-align: left; white-space: nowrap; }
 .admin-table td:first-child { width: auto; font-weight: normal; }
+.admin-cloud-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 18px; margin-bottom: 15px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 12px; }
+.admin-table tr.admin-row-excluded td { opacity: 0.42; background-color: rgba(231, 76, 60, 0.04); }
+.admin-table tr.admin-row-excluded td:first-child,
+.admin-table tr.admin-row-excluded td:last-child { opacity: 1; }
