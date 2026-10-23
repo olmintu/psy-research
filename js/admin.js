@@ -226,6 +226,23 @@ async function handleAdminFiles(fileList) {
     renderAdminView();
 }
 
+// Показать / скрыть секретный ключ по клику на глазик
+function toggleCloudKeyVisibility() {
+    const input = document.getElementById('admin-cloud-key');
+    const icon = document.getElementById('admin-cloud-key-icon');
+    if (!input || !icon) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
 // Прямая загрузка ответов из Google Таблицы (Этап 4)
 async function fetchFromGoogleSheet() {
     if (typeof GOOGLE_URL === 'undefined' || !GOOGLE_URL) {

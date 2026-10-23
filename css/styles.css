@@ -375,3 +375,7 @@
 .admin-table tr.admin-row-excluded td { opacity: 0.42; background-color: rgba(231, 76, 60, 0.04); }
 .admin-table tr.admin-row-excluded td:first-child,
 .admin-table tr.admin-row-excluded td:last-child { opacity: 1; }
+.admin-pass-wrap { position: relative; display: flex; align-items: center; max-width: 260px; width: 100%; }
+.admin-pass-wrap input { width: 100%; padding: 9px 38px 9px 12px; font-size: 0.9em; }
+.admin-pass-toggle { position: absolute; right: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 6px; font-size: 0.95em; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
+.admin-pass-toggle:hover { color: var(--primary); }
