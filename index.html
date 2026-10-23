@@ -8,6 +8,8 @@
     <!-- PDFMake для генерации PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <!-- SheetJS для чтения и выгрузки Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- styles.css -->
     <link rel="stylesheet" href="css/styles.css">
@@ -88,8 +90,9 @@
         <!-- DEV TOOLS -->
         <div id="dev-panel">
             <div style="font-weight:bold; margin-bottom:10px;">🛠️ Режим разработчика</div>
-            <div style="display:flex; align-items:center;">
-                <button class="dev-btn" onclick="fillRandomData()">🎲 Заполнить случайно</button>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="dev-btn" onclick="fillRandomData()">🎲 Заполнить случайно</button>
+                <button type="button" class="dev-btn" style="background:var(--primary); border-color:var(--primary);" onclick="openAdminPanel()">📊 Админ-панель (Обработчик)</button>
             </div>
             <label style="display:block; margin-top:10px; cursor:pointer;">
                 <input type="checkbox" id="dev-send-cloud"> ☁️ Отправлять в облако 
@@ -379,7 +382,75 @@
             <div id="detailsIPL" style="display:none; margin-top:15px; font-size:0.9em; line-height:1.6;"></div>
         </div>
         <div style="text-align:center; margin-top:30px;">
+            <button class="btn btn-red" id="btn-back-to-admin" style="display:none; background:var(--primary); margin-bottom:10px;" onclick="returnToAdminPanel()">⬅️ Вернуться в Админ-панель</button>
             <button class="btn btn-red" onclick="clearState()">Начать заново</button>
+        </div>
+    </div>
+
+    <!-- АДМИН-ПАНЕЛЬ (ОБРАБОТЧИК ДАННЫХ) -->
+    <div class="step" id="step-admin">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+            <h1 style="margin:0; text-align:left;">📊 Панель исследователя</h1>
+            <button type="button" class="btn btn-back" style="flex:none; width:auto; padding:10px 18px; font-size:0.95em;" onclick="closeAdminPanel()">← Вернуться к анкете</button>
+        </div>
+
+        <div class="instruction">
+            Загрузите сырой файл <b>.xlsx / .csv</b> из Google Таблицы (где в 1-м столбце штамп времени, а в 3-м столбце — JSON ответа) или отдельные резервные файлы <b>.json</b>. Все шкалы и профили рассчитываются прямо в браузере по алгоритму <code>process_survey.py</code>.
+        </div>
+
+        <!-- Зона загрузки -->
+        <div id="admin-drop-zone" class="admin-drop-zone">
+            <div style="font-size:2em; margin-bottom:8px;">📥</div>
+            <div style="font-weight:600; font-size:1.05em; margin-bottom:6px;">Перетащите сюда файл Excel (.xlsx) с сырыми ответами или файлы .json</div>
+            <div style="font-size:0.85em; color:var(--text-muted); margin-bottom:15px;">Обработка происходит локально на вашем устройстве</div>
+            <button type="button" class="btn btn-next" style="width:auto; padding:10px 24px; font-size:0.95em;" onclick="document.getElementById('admin-file-input').click()">Выбрать файл(ы)</button>
+            <input type="file" id="admin-file-input" accept=".xlsx,.xls,.csv,.json" multiple style="display:none;">
+        </div>
+
+        <!-- Панель управления и фильтров (появляется после загрузки файла) -->
+        <div id="admin-controls" style="display:none; margin-top:20px;">
+            <div class="admin-toolbar">
+                <div class="admin-filters">
+                    <label><input type="checkbox" id="admin-filter-dev" checked onchange="renderAdminView()"> Исключить тестовые (DEV)</label>
+                    <label><input type="checkbox" id="admin-filter-fast" onchange="renderAdminView()"> Исключить быстрые прокликивания (Fast_Clicker)</label>
+                </div>
+                <div class="admin-actions">
+                    <button type="button" class="btn btn-success" style="padding:12px 20px; font-size:0.95em;" onclick="exportFinalExcel()">
+                        📥 Скачать FINAL_RESULTS.xlsx
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="margin-top:0; width:auto; padding:12px 20px; font-size:0.95em;" disabled title="Будет активировано на Этапе 2-3">
+                        📊 Скачать .sav (SPSS)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Карточки статистики -->
+            <div id="admin-stats" class="admin-stats-grid"></div>
+
+            <!-- Лог ошибок парсинга (если есть битые строки) -->
+            <div id="admin-errors-box" style="display:none;" class="admin-error-log"></div>
+
+            <!-- Таблица предпросмотра респондентов -->
+            <h3 style="margin-top:25px;">Список респондентов</h3>
+            <div class="admin-table-wrap">
+                <table class="admin-table" id="admin-preview-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Дата / Время</th>
+                            <th>Имя / ФИО</th>
+                            <th>Пол / Возр.</th>
+                            <th>КМНС</th>
+                            <th>Время (ММ.СС)</th>
+                            <th>Fast Clicker</th>
+                            <th>СЖО (Общ)</th>
+                            <th>ИПЛ (Общ)</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-preview-tbody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -414,6 +485,8 @@
     <script src="js/scoring.js"></script>
     <script src="js/sync.js"></script>
     <script src="js/pdf_export.js"></script>
+    <script src="js/survey_meta.js"></script>
+    <script src="js/admin.js"></script>
     <script src="js/app.js"></script>
 
 <button id="dev-autofill-btn" onclick="devAutoFill()" style="display:none; position:fixed; top:70px; right:15px; z-index:9999; background:#e74c3c; color:white; padding:12px 20px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
