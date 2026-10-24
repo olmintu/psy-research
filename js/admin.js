@@ -815,25 +815,34 @@ function renderAdminView() {
 
         const safeUid = item.uid.replace(/'/g, "\\'");
 
+        // Короткий формат пола (М / Ж) и компактная дата без секунд
+        const shortGender = p.Gender === 'Мужской' ? 'М' : (p.Gender === 'Женский' ? 'Ж' : (p.Gender || '—'));
+        const shortDate = p.Timestamp ? String(p.Timestamp).replace(/:\d{2}$/, '') : '—';
+        const sjoScore = p.SJO_Total !== null && p.SJO_Total !== undefined ? p.SJO_Total : '—';
+        const iplScore = p.IPL_Total || '—';
+
         tr.innerHTML = `
             <td style="text-align:center;">
                 <input type="checkbox" ${item.manualExcluded ? '' : 'checked'} onchange="toggleRespondentRow('${safeUid}', this.checked)" style="width:18px; height:18px; cursor:pointer; accent-color:var(--primary);">
             </td>
             <td>${idx + 1}</td>
-            <td>${p.Timestamp || '—'}</td>
-            <td><b>${p.FIO || '—'}</b></td>
-            <td>${p.Gender || '—'}, ${p.Age || '—'}</td>
+            <td style="color:var(--text-muted); font-size:0.82rem;" title="${p.Timestamp || ''}">${shortDate}</td>
+            <td style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">
+                <a href="javascript:void(0)" onclick="openRespondentReport(${idx})" style="color:var(--primary); font-weight:600; text-decoration:none;" title="Нажмите, чтобы открыть отчет: ${p.FIO || ''}">
+                    ${p.FIO || '—'}
+                </a>
+            </td>
+            <td>${shortGender}, ${p.Age || '—'}</td>
             <td>${p.Is_KMNS || '—'}</td>
             <td>${p.Total_Time || '—'}</td>
             <td>${fastBadge}</td>
-            <td>${p.SJO_Total !== null ? p.SJO_Total : '—'}</td>
-            <td>${p.IPL_Total || '—'}</td>
+            <td><b>${sjoScore}</b> <span style="color:var(--text-muted);">/</span> <b>${iplScore}</b></td>
             <td>
                 <div style="display:flex; gap:6px;">
-                    <button type="button" class="btn btn-next" style="padding:6px 10px; font-size:0.82rem; width:auto;" onclick="openRespondentReport(${idx})" title="Открыть профиль и графики">
+                    <button type="button" class="btn btn-next" style="padding:5px 10px; font-size:0.8rem; width:auto;" onclick="openRespondentReport(${idx})" title="Открыть профиль и графики">
                         👁️ Отчет
                     </button>
-                    <button type="button" class="btn btn-red" style="margin-top:0; padding:6px 10px; font-size:0.82rem; width:auto;" onclick="deleteRespondentRow('${safeUid}')" title="Удалить строку из списка">
+                    <button type="button" class="btn btn-red" style="margin-top:0; padding:5px 9px; font-size:0.8rem; width:auto;" onclick="deleteRespondentRow('${safeUid}')" title="Удалить строку из списка">
                         🗑️
                     </button>
                 </div>

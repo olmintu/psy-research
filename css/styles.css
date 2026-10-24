@@ -368,9 +368,20 @@
 .admin-stat-lbl { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; }
 .admin-error-log { margin-top: 15px; padding: 12px 15px; background: rgba(231, 76, 60, 0.1); border: 1px solid var(--error); border-radius: 8px; font-size: 0.85rem; color: var(--text-main); max-height: 180px; overflow-y: auto; font-family: monospace; }
 .admin-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; max-height: 500px; overflow-y: auto; }
-.admin-table { margin-bottom: 0; font-size: 0.88rem; }
-.admin-table th, .admin-table td { padding: 10px 8px; text-align: left; white-space: nowrap; }
+.admin-table { margin-bottom: 0; font-size: 0.86rem; }
+.admin-table th, .admin-table td { padding: 8px 8px; text-align: left; white-space: nowrap; }
 .admin-table td:first-child { width: auto; font-weight: normal; }
+/* Приклеиваем столбец "Действия" к правому краю таблицы, чтобы он всегда был виден */
+.admin-table th:last-child,
+.admin-table td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--surface);
+    z-index: 5;
+    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.06);
+}
+.admin-table thead th:last-child { z-index: 15; }
+.admin-table tr.answered td:last-child { background: var(--info-bg); }
 .admin-cloud-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 18px; margin-bottom: 15px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 12px; }
 .admin-table tr.admin-row-excluded td { opacity: 0.42; background-color: rgba(231, 76, 60, 0.04); }
 .admin-table tr.admin-row-excluded td:first-child,
