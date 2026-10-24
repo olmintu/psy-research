@@ -102,35 +102,41 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
     const writer = new SavBufferWriter(524288);
 
     // 1. Подготовка описаний переменных и расчет 8-байтовых слотов
-    let currentSlot = 1; // 1-based индекс слота для привязки Value Labels
+    let currentSlot = 1;
     const varDefs = [];
 
     orderedCols.forEach((colKey, idx) => {
         const meta = fullMeta[colKey] || { label: colKey, type: 'numeric', measure: 'scale' };
         const isString = meta.type === 'string';
-        // Для коротких тех. строк (Timestamp, Total_Time) выделяем 32 байта, для текстовых ответов — 240 байт
-        const isShortStr = (colKey === 'Timestamp' || colKey === 'Total_Time' || colKey === 'Fast_Clicker_Detail');
+        const isShortStr = (colKey === 'Timestamp' || colKey === 'Total_Time' || colKey === 'Fast_Clicker');
         const strByteWidth = isString ? (isShortStr ? 32 : 240) : 0;
         const slotsCount = isString ? (strByteWidth / 8) : 1;
 
-        const shortName = `V${idx + 1}`; // Уникальное 8-байтовое имя в словаре
+        const shortName = `V${idx + 1}`;
         const longName = sanitizeSpssVarName(colKey);
 
         let measureCode = 3; // 3 = Scale
         if (meta.measure === 'nominal' || isString) measureCode = 1;
         else if (meta.measure === 'ordinal') measureCode = 2;
 
+        // Умная обрезка подписи переменной до 128 символов и меток значений до 60 символов (как в process_survey (2).py)
+        const trimmedVarLabel = typeof metaTrim === 'function' ? metaTrim(meta.label || colKey, LABEL_MAX) : (meta.label || colKey);
+        const trimmedValLabels = (!isString && meta.values && Object.keys(meta.values).length > 0)
+            ? (typeof shortValueLabels === 'function' ? shortValueLabels(meta.values) : meta.values)
+            : null;
+
         varDefs.push({
             colKey,
             shortName,
             longName,
-            label: meta.label || colKey,
+            label: trimmedVarLabel,
             isString,
             strByteWidth,
             slotsCount,
             slotIndex: currentSlot,
             measureCode,
-            values: (!isString && meta.values && Object.keys(meta.values).length > 0) ? meta.values : null
+            hasMissingAnon: Boolean(!isString && meta.hasMissingAnon),
+            values: trimmedValLabels
         });
 
         currentSlot += slotsCount;
@@ -146,15 +152,15 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
     writer.writeFixedString('$FL2', 4);
     writer.writeFixedString('@(#) SPSS DATA FILE - SURVEY JS EXPORT', 60);
     writer.writeInt32(2);                 // layout_code = 2 (Little-Endian)
-    writer.writeInt32(totalSlotsPerCase); // nominal_case_size (число 8-байтовых элементов на строку)
-    writer.writeInt32(0);                 // compression = 0 (без сжатия, 100% совместимость)
+    writer.writeInt32(totalSlotsPerCase); // nominal_case_size
+    writer.writeInt32(0);                 // compression = 0
     writer.writeInt32(0);                 // weight_index = 0
-    writer.writeInt32(nCases);            // ncases (количество респондентов)
+    writer.writeInt32(nCases);            // ncases
     writer.writeFloat64(100.0);           // bias = 100.0
     writer.writeFixedString(dateStr, 9);  // DD Mon YY
     writer.writeFixedString(timeStr, 8);  // HH:MM:SS
-    writer.writeFixedString('Psychological Survey Data', 64);
-    writer.writeFixedString('', 3, 0x00); // 3 байта выравнивания
+    writer.writeFixedString('Результаты опроса', 64);
+    writer.writeFixedString('', 3, 0x00);
 
     // ==================================================================
     // 2. ЗАПИСИ ПЕРЕМЕННЫХ (Variable Records — rec_type = 2)
@@ -162,18 +168,18 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
     for (const v of varDefs) {
         const labelBytes = encodeUtf8Safe(v.label, 250);
         const hasLabel = labelBytes.length > 0 ? 1 : 0;
+        const nMissing = v.hasMissingAnon ? 1 : 0; // 1 дискретный пропуск (99 = Аноним)
 
         writer.writeInt32(2); // rec_type = 2
-        writer.writeInt32(v.isString ? v.strByteWidth : 0); // 0 для чисел, длина в байтах для строк
+        writer.writeInt32(v.isString ? v.strByteWidth : 0);
         writer.writeInt32(hasLabel);
-        writer.writeInt32(0); // n_missing_values = 0
+        writer.writeInt32(nMissing);
 
-        // Формат отображения: тип 1 (A — строка) или тип 5 (F — число F8.0)
         const fmtCode = v.isString
             ? ((0) | (Math.min(v.strByteWidth, 40) << 8) | (1 << 16))
             : ((0) | (8 << 8) | (5 << 16));
-        writer.writeInt32(fmtCode); // print format
-        writer.writeInt32(fmtCode); // write format
+        writer.writeInt32(fmtCode);
+        writer.writeInt32(fmtCode);
         writer.writeFixedString(v.shortName, 8);
 
         if (hasLabel) {
@@ -182,10 +188,14 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
             writer.writeFixedString(v.label, paddedLen);
         }
 
-        // Если переменная строковая (> 8 байт), дописываем пустые слоты продолжения (type = -1)
+        // Если в переменной есть ответы "Аноним" (99), записываем 99.0 как Missing Value для SPSS
+        if (nMissing === 1) {
+            writer.writeFloat64(MISSING_ANON);
+        }
+
         for (let s = 1; s < v.slotsCount; s++) {
-            writer.writeInt32(2);  // rec_type = 2
-            writer.writeInt32(-1); // type = -1 (continuation slot)
+            writer.writeInt32(2);
+            writer.writeInt32(-1);
             writer.writeInt32(0);
             writer.writeInt32(0);
             writer.writeInt32(0);
@@ -202,14 +212,13 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
         const entries = Object.entries(v.values);
         if (entries.length === 0) continue;
 
-        writer.writeInt32(3); // rec_type = 3
+        writer.writeInt32(3);
         writer.writeInt32(entries.length);
 
         for (const [codeStr, lblText] of entries) {
             writer.writeFloat64(Number(codeStr));
-            const lblBytes = encodeUtf8Safe(lblText, 120); // Лимит SPSS на метку значения — 120 байт
+            const lblBytes = encodeUtf8Safe(lblText, 120);
             const lenByte = lblBytes.length;
-            // Общая длина (1 байт длины + текст + пробелы) должна быть кратна 8
             const totalBlock = Math.ceil((1 + lenByte) / 8) * 8;
             const padCount = totalBlock - 1 - lenByte;
 
@@ -218,31 +227,27 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
             for (let p = 0; p < padCount; p++) writer.writeUint8(0x20);
         }
 
-        // Привязка набора меток к слоту переменной (rec_type = 4)
-        writer.writeInt32(4); // rec_type = 4
-        writer.writeInt32(1); // 1 переменная
+        writer.writeInt32(4);
+        writer.writeInt32(1);
         writer.writeInt32(v.slotIndex);
     }
 
     // ==================================================================
     // 4. ИНФОРМАЦИОННЫЕ ЗАПИСИ (Info Records — rec_type = 7)
     // ==================================================================
-
-    // Subtype 3: Machine Integer Info (указываем UTF-8 = 65001)
     writer.writeInt32(7);
     writer.writeInt32(3);
     writer.writeInt32(4);
     writer.writeInt32(8);
-    writer.writeInt32(20);    // version_major
-    writer.writeInt32(0);     // version_minor
-    writer.writeInt32(0);     // version_revision
-    writer.writeInt32(-1);    // machine_code
-    writer.writeInt32(1);     // IEEE 754
-    writer.writeInt32(1);     // compression_code
-    writer.writeInt32(2);     // endianness = 2 (Little-Endian)
-    writer.writeInt32(65001); // character_code = 65001 (UTF-8)
+    writer.writeInt32(20);
+    writer.writeInt32(0);
+    writer.writeInt32(0);
+    writer.writeInt32(-1);
+    writer.writeInt32(1);
+    writer.writeInt32(1);
+    writer.writeInt32(2);
+    writer.writeInt32(65001);
 
-    // Subtype 4: Machine Floating-Point Info (SYSMIS, HIGHEST, LOWEST)
     writer.writeInt32(7);
     writer.writeInt32(4);
     writer.writeInt32(8);
@@ -251,18 +256,16 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
     writer.writeFloat64(HIGHEST);
     writer.writeFloat64(SYSMIS);
 
-    // Subtype 11: Параметры отображения переменных (Measure, Width, Alignment)
     writer.writeInt32(7);
     writer.writeInt32(11);
     writer.writeInt32(4);
     writer.writeInt32(varDefs.length * 3);
     for (const v of varDefs) {
-        writer.writeInt32(v.measureCode);        // 1=Nominal, 2=Ordinal, 3=Scale
-        writer.writeInt32(v.isString ? 16 : 10); // Ширина колонки в Data View
-        writer.writeInt32(v.isString ? 0 : 1);   // Выравнивание: 0=Left, 1=Right
+        writer.writeInt32(v.measureCode);
+        writer.writeInt32(v.isString ? 16 : 10);
+        writer.writeInt32(v.isString ? 0 : 1);
     }
 
-    // Subtype 13: Длинные имена переменных (SHORT=LongName через табуляцию)
     const longNamesStr = varDefs.map(v => `${v.shortName}=${v.longName}`).join('\t');
     const longNamesBytes = spssEncoder.encode(longNamesStr);
     writer.writeInt32(7);
@@ -271,7 +274,6 @@ function generateSavBinary(codedRows, orderedCols, fullMeta) {
     writer.writeInt32(longNamesBytes.length);
     writer.writeBytes(longNamesBytes);
 
-    // Subtype 20: Явное указание кодировки UTF-8
     const encBytes = spssEncoder.encode('UTF-8');
     writer.writeInt32(7);
     writer.writeInt32(20);
@@ -311,11 +313,8 @@ function exportFinalSav() {
         return;
     }
 
-    const fullMeta = getFullSurveyMeta();
-    const codedRows = adminFilteredRows.map(item => buildCodedSurveyRow(item.rawState, item.processed));
-    const codedCols = getOrderedColumns(codedRows);
-
-    const savBytes = generateSavBinary(codedRows, codedCols, fullMeta);
+    const { codedRows, spssCols, fullMeta } = prepareCodedDataset(adminFilteredRows);
+    const savBytes = generateSavBinary(codedRows, spssCols, fullMeta);
     const blob = new Blob([savBytes], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
 

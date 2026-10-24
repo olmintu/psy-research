@@ -869,61 +869,102 @@ function escapeSheetFormulas(ws) {
     }
 }
 
-// Экспорт готового файла FINAL_RESULTS.xlsx (3 листа: Текст, Коды SPSS, Словарь Codebook)
-function exportFinalExcel() {
+let currentExcelSheetMode = 2; // По умолчанию: 2 листа (Данные + Кодировка)
+
+function toggleExcelDropdown(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('excel-dropdown-menu');
+    if (menu) menu.classList.toggle('open');
+}
+
+function selectAndExportExcel(mode) {
+    currentExcelSheetMode = mode;
+    const labels = { 1: '1 лист', 2: '2 листа', 3: '3 листа' };
+    const badge = document.getElementById('excel-mode-badge');
+    if (badge) badge.textContent = labels[mode] || '2 листа';
+
+    document.querySelectorAll('#excel-dropdown-menu .excel-menu-item').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.mode, 10) === mode);
+    });
+
+    const menu = document.getElementById('excel-dropdown-menu');
+    if (menu) menu.classList.remove('open');
+
+    exportFinalExcel(mode);
+}
+
+// Закрываем меню при клике в любое место вне кнопки
+document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('excel-split-wrap');
+    const menu = document.getElementById('excel-dropdown-menu');
+    if (wrap && menu && !wrap.contains(e.target)) {
+        menu.classList.remove('open');
+    }
+});
+
+// Экспорт готового файла FINAL_RESULTS.xlsx с выбором количества листов (1, 2 или 3)
+function exportFinalExcel(forcedMode) {
     if (adminFilteredRows.length === 0) {
         alert('Нет данных для выгрузки!');
         return;
     }
 
-    const wb = XLSX.utils.book_new();
+    const sheetMode = forcedMode || currentExcelSheetMode || 2;
 
-    // 1. Лист "FINAL_RESULTS" (Классический вид 1-в-1 как в process_survey.py)
+    const wb = XLSX.utils.book_new();
+    const { codedRows, spssCols, baseCols, fullMeta } = prepareCodedDataset(adminFilteredRows);
+
+    // 1. Лист 1: Классическая таблица результатов (1-в-1 как в process_survey.py)
     const rowsData = adminFilteredRows.map(item => item.processed);
-    const orderedCols = getOrderedColumns(rowsData);
-    const sheetMatrix = [orderedCols];
+    const sheetMatrix = [baseCols];
     for (const r of rowsData) {
-        sheetMatrix.push(orderedCols.map(col => (r[col] !== undefined && r[col] !== null) ? r[col] : ''));
+        sheetMatrix.push(baseCols.map(col => (r[col] !== undefined && r[col] !== null) ? r[col] : ''));
     }
     const wsClassic = XLSX.utils.aoa_to_sheet(sheetMatrix);
     escapeSheetFormulas(wsClassic);
-    XLSX.utils.book_append_sheet(wb, wsClassic, 'FINAL_RESULTS');
+    XLSX.utils.book_append_sheet(wb, wsClassic, 'Sheet1');
 
-    // 2. Лист "SPSS_Codes" (Оцифрованные значения 1, 2, 3...)
-    const codedRows = adminFilteredRows.map(item => buildCodedSurveyRow(item.rawState, item.processed));
-    const codedCols = getOrderedColumns(codedRows);
-    const codedMatrix = [codedCols];
-    for (const r of codedRows) {
-        codedMatrix.push(codedCols.map(col => (r[col] !== undefined && r[col] !== null) ? r[col] : ''));
-    }
-    const wsCoded = XLSX.utils.aoa_to_sheet(codedMatrix);
-    escapeSheetFormulas(wsCoded);
-    XLSX.utils.book_append_sheet(wb, wsCoded, 'SPSS_Codes');
-
-    // 3. Лист "Codebook" (Словарь всех переменных, подписей колонок и кодов ответов)
-    const fullMeta = getFullSurveyMeta();
-    const codebookMatrix = [
-        ['Имя переменной (Column)', 'Подпись переменной (Variable Label)', 'Тип в SPSS', 'Шкала (Measure)', 'Кодировка значений (Value Labels)']
-    ];
-    for (const col of codedCols) {
-        const info = fullMeta[col] || { label: col, type: 'numeric', measure: 'scale' };
-        let valLabelsStr = '';
-        if (info.values) {
-            valLabelsStr = Object.entries(info.values)
-                .map(([k, v]) => `${k} = ${v}`)
-                .join('; ');
+    // 2. Если выбран режим "3 листа" — добавляем лист с числовыми кодами SPSS_Codes
+    if (sheetMode === 3) {
+        const codedMatrix = [spssCols];
+        for (const r of codedRows) {
+            codedMatrix.push(spssCols.map(col => (r[col] !== undefined && r[col] !== null) ? r[col] : ''));
         }
-        codebookMatrix.push([
-            col,
-            info.label || col,
-            info.type === 'string' ? 'Строковая (String)' : 'Числовая (Numeric)',
-            info.measure || (info.type === 'string' ? 'nominal' : 'scale'),
-            valLabelsStr
-        ]);
+        const wsCoded = XLSX.utils.aoa_to_sheet(codedMatrix);
+        escapeSheetFormulas(wsCoded);
+        XLSX.utils.book_append_sheet(wb, wsCoded, 'SPSS_Codes');
     }
-    const wsCodebook = XLSX.utils.aoa_to_sheet(codebookMatrix);
-    escapeSheetFormulas(wsCodebook);
-    XLSX.utils.book_append_sheet(wb, wsCodebook, 'Codebook');
+
+    // 3. Если выбран режим "2 листа" или "3 листа" — добавляем лист «Кодировка» (как add_codebook в process_survey (2).py)
+    if (sheetMode >= 2) {
+        const codebookMatrix = [
+            ['Переменная', 'Подпись (полный текст)', 'Значения (код = текст)']
+        ];
+        const colsForCodebook = sheetMode === 3 ? spssCols : baseCols;
+
+        for (const c of colsForCodebook) {
+            const info = fullMeta[c] || {};
+            let vals = info.values ? Object.assign({}, info.values) : null;
+            if (info.options && !vals) {
+                vals = Object.fromEntries(info.options.map((o, i) => [i + 1, o]));
+            }
+            if (info.kind && info.kind.startsWith('category') && vals) {
+                vals[MISSING_ANON] = 'Аноним (не указал)';
+            }
+            const valsText = vals
+                ? Object.entries(vals).map(([k, v]) => `${k} = ${v}`).join('\n')
+                : '';
+
+            codebookMatrix.push([
+                c,
+                info.full || info.label || '',
+                valsText
+            ]);
+        }
+        const wsCodebook = XLSX.utils.aoa_to_sheet(codebookMatrix);
+        escapeSheetFormulas(wsCodebook);
+        XLSX.utils.book_append_sheet(wb, wsCodebook, 'Кодировка');
+    }
 
     XLSX.writeFile(wb, 'FINAL_RESULTS.xlsx');
 }

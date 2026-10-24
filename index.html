@@ -433,11 +433,33 @@
                     <label><input type="checkbox" id="admin-filter-dev" checked onchange="renderAdminView()"> Исключить тестовые (DEV)</label>
                     <label><input type="checkbox" id="admin-filter-fast" onchange="renderAdminView()"> Исключить быстрые прокликивания (Fast_Clicker)</label>
                 </div>
-                <div class="admin-actions">
-                    <button type="button" class="btn btn-success" style="padding:12px 20px; font-size:0.95em;" onclick="exportFinalExcel()">
-                        📥 Скачать FINAL_RESULTS.xlsx
-                    </button>
-                    <button type="button" class="btn btn-next" style="margin-top:0; width:auto; padding:12px 20px; font-size:0.95em;" onclick="exportFinalSav()">
+                <div class="admin-actions" style="align-items:center;">
+                    <!-- Составная кнопка Excel с выпадающим меню состава листов -->
+                    <div class="excel-split-wrap" id="excel-split-wrap">
+                        <button type="button" class="btn btn-success excel-main-btn" onclick="exportFinalExcel()">
+                            📥 Скачать .xlsx <span id="excel-mode-badge" class="excel-mode-badge">2 листа</span>
+                        </button>
+                        <button type="button" class="btn btn-success excel-arrow-btn" onclick="toggleExcelDropdown(event)" title="Выбрать состав листов Excel">
+                            ▾
+                        </button>
+                        <div class="excel-dropdown-menu" id="excel-dropdown-menu">
+                            <div class="excel-menu-title">Состав файла FINAL_RESULTS.xlsx:</div>
+                            <div class="excel-menu-item" data-mode="1" onclick="selectAndExportExcel(1)">
+                                <b>1 лист: Только данные</b>
+                                <span>Классическая таблица результатов</span>
+                            </div>
+                            <div class="excel-menu-item active" data-mode="2" onclick="selectAndExportExcel(2)">
+                                <b>2 листа: Данные + Кодировка</b>
+                                <span>Таблица + расшифровка всех шкал и кодов</span>
+                            </div>
+                            <div class="excel-menu-item" data-mode="3" onclick="selectAndExportExcel(3)">
+                                <b>3 листа: Полный пакет</b>
+                                <span>Данные + Числовые коды SPSS + Кодировка</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-next" style="flex:none; margin-top:0; width:auto; padding:12px 20px; font-size:0.95em;" onclick="exportFinalSav()">
                         📊 Скачать .sav (SPSS)
                     </button>
                 </div>
